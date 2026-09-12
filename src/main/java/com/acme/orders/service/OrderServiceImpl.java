@@ -53,7 +53,7 @@ public class OrderServiceImpl implements OrderService {
         }
         if (order.getTotal().compareTo(REVIEW_THRESHOLD) > 0) {
             int score = fraudScorer.score(order);
-            if (score > 80) {
+            if (score > 60) {
                 order.setStatus(OrderStatus.UNDER_REVIEW);
                 orderRepository.save(order);
                 eventPublisher.publish(new OrderFlaggedEvent(order.getId(), score));
