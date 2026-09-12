@@ -1,0 +1,20 @@
+openapi: 3.0.1
+info: {title: Orders API, version: "1.0"}
+servers: [{url: https://api.acme.com}]
+paths:
+  /api/v1/orders/{id}:
+    get:
+      summary: Fetch a single order
+      operationId: getOrder
+      parameters: [{name: id, in: path, required: true, schema: {type: integer}}]
+      responses: {"200": {description: ok}, "404": {description: missing}}
+      security: [{bearerAuth: [orders.read]}]
+  /api/v1/orders:
+    post:
+      summary: Place a new order
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/CreateOrderRequest'}}}}
+      responses: {"201": {description: created}, "409": {description: out of stock}}
+  /api/v1/orders/{id}/receipt:
+    get:
+      summary: Download the receipt PDF
+      responses: {"200": {description: ok}}
