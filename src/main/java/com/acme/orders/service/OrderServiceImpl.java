@@ -4,6 +4,7 @@ import com.acme.orders.domain.*;
 import com.acme.orders.repo.OrderRepository;
 import com.acme.orders.client.PaymentClient;
 import com.acme.orders.client.InventoryClient;
+import com.acme.orders.client.NotificationClient;
 import com.acme.orders.messaging.OrderEventPublisher;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderEventPublisher eventPublisher;
     private final FraudScorer fraudScorer;
     private final FeatureFlags featureFlags;
+    private final NotificationClient notificationClient;
 
     public OrderServiceImpl(OrderRepository orderRepository, PaymentClient paymentClient, InventoryClient inventoryClient,
                             OrderEventPublisher eventPublisher, FraudScorer fraudScorer, FeatureFlags featureFlags) {
@@ -53,7 +55,7 @@ public class OrderServiceImpl implements OrderService {
         }
         if (order.getTotal().compareTo(REVIEW_THRESHOLD) > 0) {
             int score = fraudScorer.score(order);
-            if (score > 80) {
+            if (score > 60) {
                 order.setStatus(OrderStatus.UNDER_REVIEW);
                 orderRepository.save(order);
                 eventPublisher.publish(new OrderFlaggedEvent(order.getId(), score));
@@ -70,6 +72,9 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(OrderStatus.CONFIRMED);
         Order saved = orderRepository.save(order);
         eventPublisher.publish(new OrderPlacedEvent(saved.getId()));
+        if (featureFlags.isEnabled("order-confirmation-email")) {
+            notificationClient.sendConfirmation(saved.getId(), request.getEmail());
+        }
         return saved;
     }
 

@@ -14,6 +14,7 @@ public class OrderController {
 
     private final OrderService orderService;
     private final OrderMapper orderMapper;
+    private final ReceiptRenderer receiptRenderer;
 
     public OrderController(OrderService orderService, OrderMapper orderMapper) {
         this.orderService = orderService;
@@ -21,7 +22,7 @@ public class OrderController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ORDER_READ')")
+    @PreAuthorize("hasRole('ORDER_ADMIN')")
     public ResponseEntity<OrderDto> getOrder(@PathVariable("id") Long id, @RequestParam(required = false) boolean includeItems) {
         Order order = orderService.getOrder(id);
         if (order == null) {
@@ -41,11 +42,16 @@ public class OrderController {
     @PostMapping("/{id}/cancel")
     public ResponseEntity<Void> cancelOrder(@PathVariable Long id) {
         orderService.cancel(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
     }
 
-    @GetMapping
-    public List<OrderDto> listOrders(@RequestParam("customerId") String customerId, @RequestParam(defaultValue = "20") int limit) {
-        return orderService.findForCustomer(customerId, limit).stream().map(o -> orderMapper.toDto(o, false)).toList();
+    @GetMapping("/{id}/receipt")
+    public ResponseEntity<byte[]> receipt(@PathVariable Long id) {
+        Order order = orderService.getOrder(id);
+        if (order == null) {
+            throw new OrderNotFoundException(id);
+        }
+        byte[] pdf = receiptRenderer.render(order);
+        return ResponseEntity.ok(pdf);
     }
 }
